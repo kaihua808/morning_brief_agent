@@ -75,7 +75,7 @@ class BocParserTests(unittest.TestCase):
 
 
 class BriefIntegrationTests(unittest.TestCase):
-    def test_cross_check_warning_is_preserved(self) -> None:
+    def test_cross_check_warning_status_is_preserved(self) -> None:
         points = [
             RatePoint(f"2026-08-{day:02d}", rate)
             for day, rate in zip(
@@ -107,7 +107,9 @@ class BriefIntegrationTests(unittest.TestCase):
         self.assertEqual(
             result["cross_check"]["boc_twenty_usd_spot_sell_cost"], 144.4
         )
-        self.assertTrue(any("超过" in warning for warning in result["warnings"]))
+        self.assertEqual(result["cross_check"]["status"], "warning")
+        self.assertNotIn("warnings", result)
+        self.assertNotIn("sources", result)
 
 
 if __name__ == "__main__":

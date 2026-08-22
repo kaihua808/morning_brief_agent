@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from dataclasses import asdict, dataclass
 from datetime import date, timedelta
@@ -10,6 +11,9 @@ from time import sleep
 from typing import Any, Callable
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+
+
+LOGGER = logging.getLogger("morning_brief")
 
 
 LOOKBACK_DAYS = 14
@@ -295,21 +299,14 @@ def build_exchange_brief(
     ] = fetch_frankfurter_history,
     boc_fetcher: Callable[[], BocUsdQuote] = fetch_boc_usd_quote,
 ) -> dict[str, Any]:
-    points, frankfurter_url = history_fetcher(reference_date)
+    LOGGER.info("event=exchange_fetch_started")
+    points, _frankfurter_url = history_fetcher(reference_date)
     brief = analyze_rates(points)
-    warnings: list[str] = [
-        "汇率是参考数据，不包含礼品卡溢价、支付手续费或发卡行换汇费用。",
-        "短期趋势只是历史信号，不代表对未来汇率的预测。",
-    ]
-
-    sources: list[dict[str, Any]] = [
-        {
-            "name": "Frankfurter API",
-            "url": frankfurter_url,
-            "data_date": brief["effective_date"],
-            "status": "ok",
-        }
-    ]
+    LOGGER.info(
+        "event=frankfurter_fetch_completed observations=%s effective_date=%s",
+        brief["observation_count"],
+        brief["effective_date"],
+    )
 
     try:
         boc_quote = boc_fetcher()
@@ -319,11 +316,6 @@ def build_exchange_brief(
         cross_check_status = (
             "ok" if difference <= CROSS_CHECK_TOLERANCE_PERCENT else "warning"
         )
-        if cross_check_status == "warning":
-            warnings.append(
-                f"Frankfurter与中行现汇卖出价相差{difference:.2f}%，超过"
-                f"{CROSS_CHECK_TOLERANCE_PERCENT:.1f}%核对阈值。"
-            )
         brief["cross_check"] = {
             "status": cross_check_status,
             "boc_conversion_rate": round(boc_quote.conversion_rate, 6),
@@ -335,30 +327,20 @@ def build_exchange_brief(
             "published_date": boc_quote.published_date,
             "published_time": boc_quote.published_time,
         }
-        sources.append(
-            {
-                "name": "中国银行外汇牌价",
-                "url": BOC_RATES_URL,
-                "data_date": boc_quote.published_date,
-                "status": cross_check_status,
-            }
+        LOGGER.info(
+            "event=boc_cross_check_completed status=%s difference_percent=%s",
+            cross_check_status,
+            brief["cross_check"]["difference_percent"],
         )
     except DataSourceError as exc:
         brief["cross_check"] = {
             "status": "unavailable",
             "error": str(exc),
         }
-        warnings.append(f"中国银行交叉验证不可用：{exc}")
-        sources.append(
-            {
-                "name": "中国银行外汇牌价",
-                "url": BOC_RATES_URL,
-                "data_date": None,
-                "status": "unavailable",
-            }
+        LOGGER.warning(
+            "event=boc_cross_check_failed error_type=%s",
+            type(exc).__name__,
         )
 
     brief["report_date"] = (reference_date or date.today()).isoformat()
-    brief["warnings"] = warnings
-    brief["sources"] = sources
     return brief

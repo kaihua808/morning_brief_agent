@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Literal
 
 from agents import (
     Agent,
@@ -23,13 +22,6 @@ SILICONFLOW_MODEL = "zai-org/GLM-5.2"
 set_tracing_disabled(disabled=True)
 
 
-class SourceInfo(BaseModel):
-    name: str
-    url: str
-    data_date: str | None
-    status: Literal["ok", "warning", "unavailable"]
-
-
 class MorningBriefReport(BaseModel):
     report_date: str
     effective_rate_date: str
@@ -43,10 +35,12 @@ class MorningBriefReport(BaseModel):
     trend_label: str
     recommendation: str
     rationale: list[str]
-    warnings: list[str]
-    sources: list[SourceInfo]
     email_subject: str
     email_body: str
+
+
+class MorningBriefNarrative(BaseModel):
+    rationale: list[str] = Field(min_length=2, max_length=3)
 
 
 @function_tool
@@ -78,19 +72,16 @@ def create_morning_brief_agent(api_key: str | None = None) -> Agent:
         instructions=(
             "你负责生成每日中文晨报，目前只包含美元兑人民币汇率模块。"
             "必须先调用 get_exchange_brief，并严格使用工具返回的数据。"
-            "不得重新计算、猜测、补写或修改工具给出的数值和三档基础结论。"
+            "你只负责输出两到三条简洁、自然的中文判断理由。"
+            "不得输出或复述日期、汇率、金额、百分比、数据来源、风险提醒或邮件主题。"
+            "所有确定性字段和最终HTML都由Python根据工具结果生成。"
             "position_percentile 是今日汇率在最近14个自然日有效数据中的排名位置；"
             "数值越低，20美元所需人民币通常越少。"
             "trend_label 只是最近3个交易日均值与之前3个交易日均值的对比，"
             "必须明确说明它不是未来预测。"
-            "recommendation 必须等于工具返回的 base_recommendation。"
-            "输出简洁、自然的中文结构化结果。"
-            "邮件主题格式为：【每日晨报】YYYY-MM-DD 汇率建议：结论。"
-            "邮件正文只包含：数据有效日期、USD/CNY、20美元人民币参考成本、"
-            "14日位置、短期趋势信号、结论和两到三条理由。"
-            "邮件正文不要包含风险提醒、数据来源或免责声明，最终HTML由程序生成。"
+            "理由必须与工具返回的 position_label、trend_label 和 base_recommendation 一致。"
         ),
         tools=[get_exchange_brief],
         model_settings=ModelSettings(tool_choice="get_exchange_brief"),
-        output_type=MorningBriefReport,
+        output_type=MorningBriefNarrative,
     )

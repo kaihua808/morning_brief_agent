@@ -15,7 +15,7 @@
 - 判断今日汇率处于近期低位、中位还是高位
 - 比较最近 3 个交易日与之前 3 个交易日，生成短期趋势信号
 - 使用中国银行外汇牌价进行交叉验证
-- 校验模型输出，拒绝保存与工具数据不一致的报告
+- Python 直接使用工具数据组装确定性字段，模型只生成自然语言理由
 - 生成结构化 JSON 和 HTML 卡片邮件
 - 由 Codex 定时任务通过已连接的 Gmail 发送
 
@@ -35,13 +35,18 @@ Frankfurter API + 中国银行外汇牌价
 output/latest_report.json
     ↓
 Gmail HTML 邮件
+    ↓
+delivery_log.py → logs/morning_brief.log
 ```
 
 ### 项目结构
 
 ```text
 morning_brief_agent/
-├── main.py                       # 运行 Agent、校验报告、生成 HTML 邮件
+├── main.py                       # 运行 Agent、校验并保存报告
+├── email_template.py             # 生成 HTML 邮件卡片
+├── logging_config.py             # 日志轮换和保留策略
+├── delivery_log.py               # 记录 Gmail 投递结果
 ├── rate_agent.py                 # Agent、模型客户端、工具注册和输出结构
 ├── tools.py                      # 汇率获取、交叉验证和确定性计算
 ├── requirements.txt              # Python 依赖
@@ -72,7 +77,24 @@ python -m pip install -r requirements.txt
 项目通过硅基流动的 OpenAI-compatible Chat Completions API 调用 `zai-org/GLM-5.2`：
 
 - Base URL：`https://api.siliconflow.cn/v1`
-- 环境变量：`SILICONFLOW_API_KEY`
+- 密钥名称：`SILICONFLOW_API_KEY`
+
+本地定时任务推荐使用项目根目录的 `.env`，只需配置一次：
+
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+然后在本地编辑 `.env`：
+
+```text
+SILICONFLOW_API_KEY=你的硅基流动API Key
+```
+
+程序会自动读取 `.env`。该文件已加入 `.gitignore`，不会提交到 GitHub。不要把文件内容或真实密钥发送给其他人。
+
+也可以临时使用系统环境变量；系统环境变量存在时优先于 `.env`：
 
 macOS / Linux：
 
@@ -96,6 +118,12 @@ python -m unittest discover -s tests -v
 ```
 
 成功后会生成 `output/latest_report.json`。测试不会调用硅基流动或其他付费模型。
+
+### 运行日志
+
+完整运行链路记录在 `logs/morning_brief.log`：数据获取、模型调用、报告校验、文件保存以及 Gmail 投递结果。每次运行通过 `run_id` 关联，日志每天轮换并保留最近 14 天。
+
+日志不会记录 API Key、Gmail Token、完整模型响应或完整邮件 HTML。`email_sent` 表示 Gmail 已发送成功，`email_failed` 表示发送失败；如果当天完全没有 `run_started`，说明本地定时任务没有启动。
 
 ### 判断规则
 
@@ -125,7 +153,7 @@ The project uses a hybrid workflow: Python tools handle deterministic data retri
 - Classifies today's rate as relatively low, medium, or high
 - Compares the latest three trading days with the previous three to produce a short-term trend signal
 - Cross-checks the reference rate against Bank of China exchange rates
-- Rejects model output that does not match deterministic tool data
+- Uses Python to assemble deterministic fields from tool data while the model only writes natural-language rationale
 - Generates structured JSON and an HTML email card
 - Supports delivery through a connected Gmail account using Codex automation
 
@@ -145,13 +173,18 @@ Deterministic calculations and report validation
 output/latest_report.json
     ↓
 Gmail HTML email
+    ↓
+delivery_log.py → logs/morning_brief.log
 ```
 
 ### Project Structure
 
 ```text
 morning_brief_agent/
-├── main.py                       # Runs the agent, validates output, renders HTML
+├── main.py                       # Runs the agent, validates and saves reports
+├── email_template.py             # Renders the HTML email card
+├── logging_config.py             # Configures log rotation and retention
+├── delivery_log.py               # Records Gmail delivery results
 ├── rate_agent.py                 # Agent, model client, tool registration, schemas
 ├── tools.py                      # Rate retrieval, cross-checking, calculations
 ├── requirements.txt              # Python dependencies
@@ -182,7 +215,24 @@ python -m pip install -r requirements.txt
 The project calls `zai-org/GLM-5.2` through SiliconFlow's OpenAI-compatible Chat Completions API:
 
 - Base URL: `https://api.siliconflow.cn/v1`
-- Environment variable: `SILICONFLOW_API_KEY`
+- Secret name: `SILICONFLOW_API_KEY`
+
+For local scheduling, use a `.env` file in the project root and configure it once:
+
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+Then edit `.env` locally:
+
+```text
+SILICONFLOW_API_KEY=your_siliconflow_api_key
+```
+
+The application loads `.env` automatically. The file is excluded by `.gitignore` and will not be committed to GitHub. Never share its contents or the real key.
+
+You can also use a temporary system environment variable. System environment variables take precedence over `.env`:
 
 macOS / Linux:
 
@@ -206,6 +256,12 @@ python -m unittest discover -s tests -v
 ```
 
 On success, the report is saved to `output/latest_report.json`. Unit tests do not call SiliconFlow or any other paid model API.
+
+### Run Logs
+
+The complete workflow is recorded in `logs/morning_brief.log`, including data retrieval, model calls, report validation, file output, and Gmail delivery. A shared `run_id` links every stage. Logs rotate daily and are retained for 14 days.
+
+API keys, Gmail tokens, full model responses, and full email HTML are never logged. `email_sent` means Gmail delivery succeeded, while `email_failed` means it failed. If no `run_started` entry exists for a date, the local scheduled task did not start.
 
 ### Recommendation Rules
 
