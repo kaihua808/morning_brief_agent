@@ -19,6 +19,11 @@
 - 生成结构化 JSON 和 HTML 卡片邮件
 - 由 Codex 定时任务通过已连接的 Gmail 发送
 
+### 项目文档
+
+- [基金晨报 MVP 定义](docs/fund_morning_brief_mvp.md)
+- [基金指标概念与算法](docs/fund_metrics_guide.md)
+
 ### 工作流程
 
 ```text
@@ -49,6 +54,10 @@ morning_brief_agent/
 ├── delivery_log.py               # 记录 Gmail 投递结果
 ├── rate_agent.py                 # Agent、模型客户端、工具注册和输出结构
 ├── tools.py                      # 汇率获取、交叉验证和确定性计算
+├── fund_metrics.py               # 基金数据校验和确定性指标计算
+├── fund_data_probe.py            # 获取并保存基金净值样例
+├── data/                         # 基金样例数据与测试固件
+├── docs/                         # MVP、指标说明等项目文档
 ├── requirements.txt              # Python 依赖
 ├── .env.example                  # 环境变量示例
 └── tests/                        # 不调用付费模型的本地测试
@@ -133,6 +142,13 @@ python -m unittest discover -s tests -v
 - 最近 3 日均值相对之前 3 日变化超过 ±0.3%：标记短期上升或下降
 
 趋势信号只描述近期历史变化，不是对未来汇率的预测。
+
+### 基金实验模块的已知限制
+
+- 基金数据新鲜度暂时按自然日判断，春节、国庆等长假可能把合法数据误判为延迟；正式版本应接入交易日历。
+- 本地 CSV 是可复核的实验样例，不代表实时行情，每次使用前必须检查 `data_date` 和 `data_status`。
+- 金融数值由 Python 校验和计算，Model 后续只解释已经通过校验的结构化结果，不自行修改数字。
+- 延迟数据采用保守策略：返回 `delayed + blocked`，不生成正常指标，避免用户把旧数据当作最新情况。
 
 ### 定时运行说明
 
@@ -271,6 +287,13 @@ API keys, Gmail tokens, full model responses, and full email HTML are never logg
 - A change greater than ±0.3% between the latest and previous three-day averages is marked as a short-term rise or fall
 
 The trend signal describes recent historical movement only; it is not a forecast.
+
+### Known Limitations of the Fund Experiment
+
+- Fund freshness currently uses calendar days. Long market holidays may incorrectly classify valid data as delayed; a production version should use a trading calendar.
+- The local CSV is a reproducible experiment sample, not a real-time market feed. Check `data_date` and `data_status` before use.
+- Python validates and calculates financial figures. The model may only explain validated structured results and must not alter deterministic values.
+- Delayed data follows a conservative policy: return `delayed + blocked` and do not generate normal metrics, so stale information is not presented as current.
 
 ### Scheduling Notes
 
