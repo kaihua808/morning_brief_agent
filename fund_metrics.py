@@ -3,8 +3,9 @@ import json
 from datetime import date
 from pathlib import Path
 
-
 import pandas as pd
+
+from fund_data_probe import refresh_fund_sample
 
 
 SAMPLE_DATA_PATH = Path(__file__).with_name("data") / "006131_unit_nav_sample.csv"
@@ -20,8 +21,9 @@ def build_fund_brief(
     fund_code,
     reference_date=None,
     data_path=SAMPLE_DATA_PATH,
+    refresh_data=True,
 ):
-    """校验基金数据，并在数据可信时返回结构化指标结果。"""
+    """刷新并校验基金数据，在数据可信时返回结构化指标结果。"""
     freshness_basis = "calendar_days"
 
     if reference_date is None:
@@ -38,6 +40,22 @@ def build_fund_brief(
         }
 
     data_path = Path(data_path)
+    should_refresh = (
+        refresh_data and data_path.resolve() == SAMPLE_DATA_PATH.resolve()
+    )
+    if should_refresh:
+        try:
+            refresh_fund_sample(fund_code, data_path)
+        except Exception as exc:
+            return {
+                "fund_code": fund_code,
+                "freshness_basis": freshness_basis,
+                "data_status": "refresh_failed",
+                "calculation_status": "blocked",
+                "metrics": None,
+                "error": f"基金数据刷新失败：{exc}",
+            }
+
     if not data_path.exists():
         return {
             "fund_code": fund_code,
@@ -184,6 +202,7 @@ def build_fund_brief(
         "error": None,
     }
 
+
 def calculate_period_change(nav_values, trading_days):
     """计算指定交易日区间内的净值变化百分比。"""
     start_value = nav_values[-(trading_days + 1)]
@@ -228,6 +247,7 @@ def main():
             ensure_ascii=False,
         )
     )
+
 
 if __name__ == "__main__":
     main()

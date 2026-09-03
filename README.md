@@ -4,7 +4,7 @@
 
 ## 中文说明
 
-一个可以持续扩展的个人晨报 Agent。当前版本每天获取美元兑人民币汇率，分析 20 美元的人民币成本，并生成适合通过 Gmail 发送的 HTML 邮件。
+一个可以持续扩展的个人晨报 Agent。当前版本包含美元兑人民币汇率晨报，以及面向基金 `006131` 的单基金实验模块。
 
 项目采用混合工作流：Python 和工具负责获取、计算与校验确定性数据，OpenAI Agents SDK 调用硅基流动的 GLM-5.2 生成自然语言分析，Codex 定时任务负责运行项目并发送邮件。
 
@@ -18,6 +18,13 @@
 - Python 直接使用工具数据组装确定性字段，模型只生成自然语言理由
 - 生成结构化 JSON 和 HTML 卡片邮件
 - 由 Codex 定时任务通过已连接的 Gmail 发送
+
+基金实验模块还支持：
+
+- 安全刷新本地净值 CSV，候选数据未通过校验时保留原文件并阻止生成晨报
+- 由 Python 计算近 5 日、近 20 日变化、区间位置和最大回撤
+- 由 Agent 调用基金工具，Model 只解释已校验指标，Python 再校验三段解释职责
+- 生成可在浏览器中查看的响应式基金 HTML 晨报
 
 ### 项目文档
 
@@ -44,6 +51,20 @@ Gmail HTML 邮件
 delivery_log.py → logs/morning_brief.log
 ```
 
+基金实验模块：
+
+```text
+fund_main.py 006131
+    ↓
+安全刷新并校验净值 CSV
+    ↓
+Python 计算确定性指标
+    ↓
+Agent 调用工具，Model 生成三段解释
+    ↓
+Python 校验解释并生成 output/fund_brief.html
+```
+
 ### 项目结构
 
 ```text
@@ -55,7 +76,11 @@ morning_brief_agent/
 ├── rate_agent.py                 # Agent、模型客户端、工具注册和输出结构
 ├── tools.py                      # 汇率获取、交叉验证和确定性计算
 ├── fund_metrics.py               # 基金数据校验和确定性指标计算
-├── fund_data_probe.py            # 获取并保存基金净值样例
+├── fund_data_probe.py            # 安全获取、校验并替换基金净值样例
+├── fund_agent.py                 # 基金工具、Agent 指令和输出结构
+├── fund_main.py                  # 运行基金 Agent 并生成正式 HTML
+├── fund_html.py                  # 渲染基金 HTML 晨报
+├── fund_preview.py               # 使用固定可信数据生成离线预览
 ├── data/                         # 基金样例数据与测试固件
 ├── docs/                         # MVP、指标说明等项目文档
 ├── requirements.txt              # Python 依赖
@@ -123,10 +148,12 @@ $env:SILICONFLOW_API_KEY="你的硅基流动 API Key"
 
 ```bash
 python main.py
+python -B fund_main.py 006131
+python -B fund_preview.py
 python -m unittest discover -s tests -v
 ```
 
-成功后会生成 `output/latest_report.json`。测试不会调用硅基流动或其他付费模型。
+汇率入口会生成 `output/latest_report.json`；基金正式入口会生成 `output/fund_brief.html`；离线预览会生成 `output/fund_brief_preview.html`。测试不会调用硅基流动或其他付费模型。
 
 ### 运行日志
 
@@ -146,8 +173,8 @@ python -m unittest discover -s tests -v
 ### 基金实验模块的已知限制
 
 - 基金数据新鲜度暂时按自然日判断，春节、国庆等长假可能把合法数据误判为延迟；正式版本应接入交易日历。
-- 本地 CSV 是可复核的实验样例，不代表实时行情，每次使用前必须检查 `data_date` 和 `data_status`。
-- 金融数值由 Python 校验和计算，Model 后续只解释已经通过校验的结构化结果，不自行修改数字。
+- 本地 CSV 会在正式运行前尝试安全刷新，但仍是实验数据样例，不代表实时行情；候选数据校验失败时不会覆盖原文件。
+- 金融数值由 Python 校验和计算，Model 只解释已经通过校验的结构化结果，不自行修改数字。
 - 延迟数据采用保守策略：返回 `delayed + blocked`，不生成正常指标，避免用户把旧数据当作最新情况。
 
 ### 定时运行说明
@@ -158,7 +185,7 @@ python -m unittest discover -s tests -v
 
 ## English
 
-An extensible personal morning brief agent. The current version retrieves the USD/CNY exchange rate, calculates the CNY cost of USD 20, and generates an HTML email suitable for Gmail delivery.
+An extensible personal morning brief agent. The current version includes a USD/CNY exchange-rate brief and an experimental single-fund workflow for fund `006131`.
 
 The project uses a hybrid workflow: Python tools handle deterministic data retrieval, calculation, and validation; the OpenAI Agents SDK calls GLM-5.2 through SiliconFlow for natural-language analysis; a Codex automation runs the project and sends the email.
 
@@ -172,6 +199,13 @@ The project uses a hybrid workflow: Python tools handle deterministic data retri
 - Uses Python to assemble deterministic fields from tool data while the model only writes natural-language rationale
 - Generates structured JSON and an HTML email card
 - Supports delivery through a connected Gmail account using Codex automation
+
+The fund experiment also:
+
+- Safely refreshes the local NAV CSV and preserves the previous file when candidate data fails validation
+- Uses Python to calculate 5-day and 20-day changes, range position, and maximum drawdown
+- Uses an Agent tool call for verified metrics, limits the model to explanation, and validates the three narrative roles in Python
+- Generates a responsive fund brief that can be opened in a browser
 
 ### Workflow
 
@@ -193,6 +227,20 @@ Gmail HTML email
 delivery_log.py → logs/morning_brief.log
 ```
 
+Fund experiment:
+
+```text
+fund_main.py 006131
+    ↓
+Safely refresh and validate the NAV CSV
+    ↓
+Calculate deterministic metrics in Python
+    ↓
+Agent tool call and model-generated narrative
+    ↓
+Validate the narrative and render output/fund_brief.html
+```
+
 ### Project Structure
 
 ```text
@@ -203,6 +251,14 @@ morning_brief_agent/
 ├── delivery_log.py               # Records Gmail delivery results
 ├── rate_agent.py                 # Agent, model client, tool registration, schemas
 ├── tools.py                      # Rate retrieval, cross-checking, calculations
+├── fund_metrics.py               # Fund validation and deterministic metrics
+├── fund_data_probe.py            # Safe fund data refresh and replacement
+├── fund_agent.py                 # Fund tool, Agent instructions, output schemas
+├── fund_main.py                  # Runs the fund Agent and saves the final HTML
+├── fund_html.py                  # Renders the fund HTML brief
+├── fund_preview.py               # Builds an offline preview from fixed data
+├── data/                         # Fund sample data and test fixtures
+├── docs/                         # MVP definition and metrics guide
 ├── requirements.txt              # Python dependencies
 ├── .env.example                  # Environment variable example
 └── tests/                        # Local tests with no paid model calls
@@ -268,10 +324,12 @@ Never place the API key in source code or commit it to GitHub.
 
 ```bash
 python main.py
+python -B fund_main.py 006131
+python -B fund_preview.py
 python -m unittest discover -s tests -v
 ```
 
-On success, the report is saved to `output/latest_report.json`. Unit tests do not call SiliconFlow or any other paid model API.
+The exchange-rate workflow saves `output/latest_report.json`; the fund workflow saves `output/fund_brief.html`; the offline preview saves `output/fund_brief_preview.html`. Unit tests do not call SiliconFlow or any other paid model API.
 
 ### Run Logs
 
@@ -291,7 +349,7 @@ The trend signal describes recent historical movement only; it is not a forecast
 ### Known Limitations of the Fund Experiment
 
 - Fund freshness currently uses calendar days. Long market holidays may incorrectly classify valid data as delayed; a production version should use a trading calendar.
-- The local CSV is a reproducible experiment sample, not a real-time market feed. Check `data_date` and `data_status` before use.
+- The local CSV is safely refreshed before a formal run, but remains an experimental sample rather than a real-time market feed. Invalid candidate data never replaces the previous file.
 - Python validates and calculates financial figures. The model may only explain validated structured results and must not alter deterministic values.
 - Delayed data follows a conservative policy: return `delayed + blocked` and do not generate normal metrics, so stale information is not presented as current.
 

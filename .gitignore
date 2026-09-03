@@ -1,5 +1,6 @@
 .env
 CHANGELOG.md
+docs/known_issues.md
 .idea/
 .venv/
 .DS_Store

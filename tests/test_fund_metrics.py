@@ -72,6 +72,7 @@ class FundBriefStatusTests(unittest.TestCase):
         result = build_fund_brief(
             "006131",
             reference_date=self.latest_date + timedelta(days=1),
+            refresh_data=False,
         )
 
         self.assertEqual(result["data_status"], "normal")
@@ -95,6 +96,7 @@ class FundBriefStatusTests(unittest.TestCase):
         result = build_fund_brief(
             "006131",
             reference_date=self.latest_date + timedelta(days=30),
+            refresh_data=False,
         )
 
         self.assertEqual(result["data_status"], "delayed")
@@ -105,6 +107,7 @@ class FundBriefStatusTests(unittest.TestCase):
         result = build_fund_brief(
             "006131",
             reference_date=self.latest_date + timedelta(days=4),
+            refresh_data=False,
         )
         self.assertEqual(result["data_status"], "normal")
 
@@ -112,6 +115,7 @@ class FundBriefStatusTests(unittest.TestCase):
         result = build_fund_brief(
             "006131",
             reference_date=self.latest_date + timedelta(days=5),
+            refresh_data=False,
         )
         self.assertEqual(result["data_status"], "delayed")
 
@@ -119,6 +123,7 @@ class FundBriefStatusTests(unittest.TestCase):
         result = build_fund_brief(
             "006131",
             reference_date=self.latest_date - timedelta(days=1),
+            refresh_data=False,
         )
 
         self.assertEqual(result["data_status"], "invalid")
