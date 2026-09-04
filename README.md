@@ -30,6 +30,12 @@
 
 - [基金晨报 MVP 定义](docs/fund_morning_brief_mvp.md)
 - [基金指标概念与算法](docs/fund_metrics_guide.md)
+- [基金晨报系统架构](docs/architecture.md)
+- [基金晨报评测报告](docs/evaluation_report.md)
+- [BC-001：过期数据仍输出指标](docs/BC-001.md)
+- [BC-002：Tool 参数解析与诊断](docs/BC-002.md)
+- [BC-003：测试静默失效](docs/BC-003.md)
+- [ADR-001：延迟数据阻断决策](docs/ADR-001.md)
 
 ### 工作流程
 
@@ -206,6 +212,17 @@ The fund experiment also:
 - Uses Python to calculate 5-day and 20-day changes, range position, and maximum drawdown
 - Uses an Agent tool call for verified metrics, limits the model to explanation, and validates the three narrative roles in Python
 - Generates a responsive fund brief that can be opened in a browser
+
+### Project Documentation
+
+- [Fund Brief MVP Definition](docs/fund_morning_brief_mvp.md)
+- [Fund Metrics Guide](docs/fund_metrics_guide.md)
+- [Fund Brief Architecture](docs/architecture.md)
+- [Fund Brief Evaluation Report](docs/evaluation_report.md)
+- [BC-001: Stale Data Used as Current Metrics](docs/BC-001.md)
+- [BC-002: Tool Argument Parsing and Diagnostics](docs/BC-002.md)
+- [BC-003: Silently Disabled Tests](docs/BC-003.md)
+- [ADR-001: Blocking Stale Fund Data](docs/ADR-001.md)
 
 ### Workflow
 
