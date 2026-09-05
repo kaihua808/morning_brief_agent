@@ -89,6 +89,7 @@ morning_brief_agent/
 ├── fund_preview.py               # 使用固定可信数据生成离线预览
 ├── data/                         # 基金样例数据与测试固件
 ├── docs/                         # MVP、指标说明等项目文档
+├── LICENSE                       # MIT 许可证
 ├── requirements.txt              # Python 依赖
 ├── .env.example                  # 环境变量示例
 └── tests/                        # 不调用付费模型的本地测试
@@ -187,6 +188,10 @@ python -m unittest discover -s tests -v
 
 当前定时任务在本地 Codex 中运行。Mac 必须处于开机、未休眠、联网状态，Codex 也需要能够在后台运行；电脑关机或休眠时无法保证准时执行。Gmail 发送由 Codex 自动化负责，不在 Python 项目中直接保存 Gmail 凭据。
 
+### 许可证
+
+本项目使用 [MIT License](LICENSE)，版权所有 © 2026 KaiHua。
+
 ---
 
 ## English
@@ -276,6 +281,7 @@ morning_brief_agent/
 ├── fund_preview.py               # Builds an offline preview from fixed data
 ├── data/                         # Fund sample data and test fixtures
 ├── docs/                         # MVP definition and metrics guide
+├── LICENSE                       # MIT License
 ├── requirements.txt              # Python dependencies
 ├── .env.example                  # Environment variable example
 └── tests/                        # Local tests with no paid model calls
@@ -373,3 +379,7 @@ The trend signal describes recent historical movement only; it is not a forecast
 ### Scheduling Notes
 
 The current automation runs locally through Codex. The Mac must be powered on, awake, online, and able to keep Codex running in the background. Execution cannot be guaranteed while the computer is shut down or asleep. Gmail delivery is handled by Codex automation, so Gmail credentials are not stored directly in this Python project.
+
+### License
+
+This project is licensed under the [MIT License](LICENSE). Copyright © 2026 KaiHua.
